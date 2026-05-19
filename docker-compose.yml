@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: compliance-tracker-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/compliance_tracker.db
+    networks:
+      - compliance-network
+
+  frontend:
+    build: ./frontend
+    container_name: compliance-tracker-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - compliance-network
+
+networks:
+  compliance-network:
+    driver: bridge
+
+volumes:
+  backend-data:
+
+# Made with Bob
