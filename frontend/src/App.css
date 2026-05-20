@@ -335,6 +335,16 @@
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
 }
 
 .stat-card h3 {
@@ -578,6 +588,14 @@
   font-size: 0.86rem;
 }
 
+.chatbot-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chatbot-minimize,
+.chatbot-maximize,
 .chatbot-close {
   background: transparent;
   color: #475569;
@@ -585,6 +603,48 @@
   padding: 0;
   font-size: 1.4rem;
   line-height: 1;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.chatbot-minimize {
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.chatbot-maximize {
+  font-size: 1.2rem;
+  font-weight: normal;
+}
+
+.chatbot-minimize:hover,
+.chatbot-maximize:hover,
+.chatbot-close:hover {
+  color: #1e293b;
+}
+
+.chatbot-shell.minimized .chatbot-panel {
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.chatbot-shell.minimized .chatbot-messages,
+.chatbot-shell.minimized .chatbot-prompts,
+.chatbot-shell.minimized .chatbot-input-row,
+.chatbot-shell.minimized .chatbot-footer {
+  display: none;
+}
+
+.chatbot-shell.maximized .chatbot-panel {
+  width: min(90vw, 1200px);
+  max-height: 90vh;
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+}
+
+.chatbot-shell.maximized .chatbot-messages {
+  max-height: calc(90vh - 280px);
 }
 
 .chatbot-prompts {

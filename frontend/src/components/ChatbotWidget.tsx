@@ -18,13 +18,14 @@ const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 function ChatbotWidget({ upcomingTasks, projects }: ChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: createId(),
       role: 'assistant',
-      content:
-        'Hi, I’m your Compliance Assistant demo. Ask about overdue work, this week’s tasks, Excel import steps, or project status.',
+      content: 'Hi, I\'m your DS&P Activity Assistant demo. Ask about overdue work, this week\'s tasks, Excel import steps, or project status.',
       timestamp: new Date().toISOString()
     }
   ]);
@@ -170,8 +171,8 @@ function ChatbotWidget({ upcomingTasks, projects }: ChatbotWidgetProps) {
 
   return (
     <div
-      className={`chatbot-shell ${isOpen ? 'open' : ''}`}
-      data-chatbot-state={isOpen ? 'open' : 'closed'}
+      className={`chatbot-shell ${isOpen ? 'open' : ''} ${isMinimized ? 'minimized' : ''} ${isMaximized ? 'maximized' : ''}`}
+      data-chatbot-state={isOpen ? (isMinimized ? 'minimized' : isMaximized ? 'maximized' : 'open') : 'closed'}
     >
       <button
         type="button"
@@ -188,20 +189,49 @@ function ChatbotWidget({ upcomingTasks, projects }: ChatbotWidgetProps) {
         <div className="chatbot-panel" role="dialog" aria-label="Compliance assistant demo">
           <div className="chatbot-header">
             <div>
-              <strong>Compliance Assistant</strong>
+              <strong>DS&P Activity Assistant</strong>
               <div className="chatbot-subtitle">Demo responses for workflow validation</div>
             </div>
-            <button
-              type="button"
-              className="chatbot-close"
-              onClick={() => setIsOpen(false)}
-              aria-label="Close assistant"
-            >
-              ×
-            </button>
+            <div className="chatbot-header-actions">
+              <button
+                type="button"
+                className="chatbot-minimize"
+                onClick={() => {
+                  setIsMinimized((current: boolean) => !current);
+                  if (!isMinimized) setIsMaximized(false);
+                }}
+                aria-label={isMinimized ? 'Restore assistant' : 'Minimize assistant'}
+                title={isMinimized ? 'Restore' : 'Minimize'}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className="chatbot-maximize"
+                onClick={() => {
+                  setIsMaximized((current: boolean) => !current);
+                  if (!isMaximized) setIsMinimized(false);
+                }}
+                aria-label={isMaximized ? 'Restore assistant' : 'Maximize assistant'}
+                title={isMaximized ? 'Restore' : 'Maximize'}
+              >
+                {isMaximized ? '❐' : '□'}
+              </button>
+              <button
+                type="button"
+                className="chatbot-close"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close assistant"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
-          <div className="chatbot-prompts">
+          {!isMinimized && (
+            <>
+              <div className="chatbot-prompts">
             {demoPrompts.map((prompt: string) => (
               <button
                 key={prompt}
@@ -257,7 +287,9 @@ function ChatbotWidget({ upcomingTasks, projects }: ChatbotWidgetProps) {
             <Link to="/projects" className="chatbot-footer-link">
               Open projects
             </Link>
-          </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import ChatbotWidget from './components/ChatbotWidget';
 import ProjectList from './components/ProjectList';
 import ProjectDetail from './components/ProjectDetail';
+import TasksView from './components/TasksView';
 import './App.css';
 
 type UserProfile = {
@@ -71,7 +72,7 @@ function App() {
           <div className="auth-brand">
             <span className="auth-icon">📊</span>
             <div>
-              <h1>Compliance Tracker</h1>
+              <h1>DS&P Activity Tracker</h1>
               <p>Log in to view projects, tasks, and compliance evidence schedules.</p>
             </div>
           </div>
@@ -123,7 +124,7 @@ function App() {
           <div className="nav-container">
             <div className="nav-left">
               <Link to="/" className="brand-link">
-                <h1 className="nav-title">📊 Compliance Tracker</h1>
+                <h1 className="nav-title">📊 DS&P Activity Tracker</h1>
               </Link>
               <div className="nav-links">
                 <Link to="/" className="nav-link">Dashboard</Link>
@@ -152,6 +153,7 @@ function App() {
               path="/"
               element={<Dashboard onChatContextChange={setDashboardChatContext} />}
             />
+            <Route path="/tasks" element={<TasksView />} />
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
             <Route path="*" element={<Navigate to="/" replace />} />

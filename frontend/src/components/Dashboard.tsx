@@ -92,8 +92,8 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
     <div className="dashboard">
       <section className="hero-card">
         <div>
-          <p className="eyebrow">Compliance operations</p>
-          <h2>📊 Compliance Dashboard</h2>
+          <p className="eyebrow">DS&P Activity operations</p>
+          <h2>📊 DS&P Activity Dashboard</h2>
           <p className="hero-text">
             Track active projects, upcoming evidence submissions, and overdue controls from one place.
           </p>
@@ -107,41 +107,41 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
 
       {stats && (
         <div className="stats-grid">
-          <div className="stat-card">
+          <Link to="/projects" className="stat-card">
             <h3>Projects</h3>
             <div className="stat-value">{stats.active_projects}</div>
             <div className="stat-label">Active / {stats.total_projects} Total</div>
-          </div>
+          </Link>
 
-          <div className="stat-card">
+          <Link to="/tasks?filter=all" className="stat-card">
             <h3>Controls</h3>
             <div className="stat-value">{stats.applicable_controls}</div>
             <div className="stat-label">Applicable / {stats.total_controls} Total</div>
-          </div>
+          </Link>
 
-          <div className="stat-card urgent">
+          <Link to="/tasks?filter=due-today" className="stat-card urgent">
             <h3>Due Today</h3>
             <div className="stat-value">{stats.tasks_due_today}</div>
             <div className="stat-label">Tasks</div>
-          </div>
+          </Link>
 
-          <div className="stat-card warning">
+          <Link to="/tasks?filter=this-week" className="stat-card warning">
             <h3>This Week</h3>
             <div className="stat-value">{stats.tasks_due_this_week}</div>
             <div className="stat-label">Tasks</div>
-          </div>
+          </Link>
 
-          <div className="stat-card danger">
+          <Link to="/tasks?filter=overdue" className="stat-card danger">
             <h3>Overdue</h3>
             <div className="stat-value">{stats.overdue_tasks}</div>
             <div className="stat-label">Tasks</div>
-          </div>
+          </Link>
 
-          <div className="stat-card success">
+          <Link to="/tasks?filter=completed" className="stat-card success">
             <h3>Completed</h3>
             <div className="stat-value">{stats.completed_tasks}</div>
             <div className="stat-label">Tasks</div>
-          </div>
+          </Link>
         </div>
       )}
 
