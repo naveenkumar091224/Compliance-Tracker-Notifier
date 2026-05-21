@@ -1,6 +1,31 @@
 # Compliance Tracker - Multi-Project Task Management System
 
-A comprehensive web application for managing compliance tasks across multiple projects with Excel import/export functionality.
+A comprehensive application for managing compliance tasks across multiple projects with Excel import/export functionality.
+
+## 🖥️ Now Available as Desktop Application!
+
+**NEW:** Compliance Tracker is now available as a standalone desktop application for Windows, macOS, and Linux!
+
+- 🚀 **One-Click Launch** - No Docker or server setup required
+- 💾 **Local Data Storage** - All data stored securely on your computer
+- 🔒 **Works Offline** - No internet required (except for Slack notifications)
+- 🪟 **Native Experience** - Runs as a native desktop application
+
+**[📥 Download Desktop App](DESKTOP_APP_GUIDE.md)** | **[🔨 Build Instructions](BUILD_INSTRUCTIONS.md)**
+
+---
+
+## 📦 Choose Your Version
+
+| Feature | Desktop App | Docker/Web Version |
+|---------|-------------|-------------------|
+| **Setup** | One-click install | Requires Docker |
+| **Best For** | End users, single machine | Teams, development |
+| **Updates** | Auto-update | Manual rebuild |
+| **Performance** | Native speed | Container overhead |
+| **Documentation** | [Desktop Guide](DESKTOP_APP_GUIDE.md) | This README |
+
+---
 
 ## Features
 
@@ -260,11 +285,26 @@ rm backend/compliance_tracker.db
 docker-compose up --build
 ```
 
+## 🔔 Slack Integration
+
+The Compliance Tracker includes Slack integration for automated notifications! Get alerts about:
+- Tasks due today and overdue tasks
+- Daily compliance summaries
+- New projects and Excel imports
+- Task completions
+
+**Setup in 5 minutes:** See [`SLACK_INTEGRATION_GUIDE.md`](SLACK_INTEGRATION_GUIDE.md) for complete setup instructions.
+
+Quick setup:
+1. Create a Slack Incoming Webhook
+2. Add webhook URL to `backend/.env`
+3. Restart with `docker-compose restart backend`
+
 ## Future Enhancements
 
 - [ ] Email notifications for upcoming deadlines
-- [ ] Desktop notification agent
-- [ ] Slack integration
+- [x] Desktop application ✅
+- [x] Slack integration ✅
 - [ ] Advanced reporting and analytics
 - [ ] Bulk task operations
 - [ ] Task comments and notes
@@ -276,6 +316,7 @@ docker-compose up --build
 ## Support
 
 For issues or questions, please refer to the planning documents:
+- [`SLACK_INTEGRATION_GUIDE.md`](SLACK_INTEGRATION_GUIDE.md) - Slack bot setup and configuration
 - `COMPLIANCE_TRACKER_PLAN.md` - Detailed implementation plan
 - `MULTI_PROJECT_STRATEGY.md` - Multi-project architecture
 

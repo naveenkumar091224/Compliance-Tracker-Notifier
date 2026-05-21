@@ -11,6 +11,9 @@ services:
       - backend-data:/app/data
     environment:
       - DATABASE_URL=sqlite:////app/data/compliance_tracker.db
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+    env_file:
+      - ./backend/.env
     networks:
       - compliance-network
 

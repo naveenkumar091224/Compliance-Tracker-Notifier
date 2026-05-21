@@ -6,7 +6,7 @@ import shutil
 import secrets
 from pathlib import Path
 
-from db import get_db, init_db
+from db import get_db, init_db, SessionLocal
 from models import Project, ControlTemplate, ProjectControl, TaskInstance
 from schemas import (
     Project as ProjectSchema,
@@ -21,8 +21,33 @@ from schemas import (
     ExcelWorkbookSheetsResponse,
     ExcelSheetInfo
 )
+from auth_schemas import (
+    LoginRequest,
+    LoginResponse,
+    RegisterRequest,
+    RegisterResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
+    ChangePasswordRequest,
+    VerifyTokenResponse,
+    UserProfile
+)
+from auth_service import (
+    authenticate_user,
+    register_user,
+    initiate_password_reset,
+    reset_password,
+    change_password,
+    user_to_profile,
+    create_demo_users
+)
+from auth_utils import create_access_token
 from excel_service import ExcelImportService
 from datetime import datetime, timedelta
+from slack_service import get_slack_service
+from notification_scheduler import start_scheduler, stop_scheduler
 
 app = FastAPI(title="Compliance Tracker API", version="1.0.0")
 
@@ -40,19 +65,151 @@ app.add_middleware(
 
 # Initialize database on startup
 @app.on_event("startup")
-def startup_event():
+async def startup_event():
     init_db()
     print("Database initialized successfully")
+    
+    # Create demo users for testing
+    db = SessionLocal()
+    try:
+        create_demo_users(db)
+        print("Demo users created/verified")
+    finally:
+        db.close()
+    
+    # Start notification scheduler
+    start_scheduler()
+    print("Notification scheduler started")
 
-# Health check
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_scheduler()
+    print("Notification scheduler stopped")
+
+# Health check endpoints
 @app.get("/")
 def read_root():
     return {"message": "Compliance Tracker API", "status": "running"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "message": "Backend is running"}
+
+# ==================== AUTHENTICATION ENDPOINTS ====================
+
+@app.post("/api/auth/login", response_model=LoginResponse)
+async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+    """Authenticate user with username/email and password"""
+    user = authenticate_user(db, credentials.username_or_email, credentials.password)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username/email or password"
+        )
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": str(user.id), "username": user.username})
+    
+    return LoginResponse(
+        success=True,
+        message="Login successful",
+        user=user_to_profile(user),
+        token=access_token
+    )
+
+
+@app.post("/api/auth/register", response_model=RegisterResponse)
+async def register(registration: RegisterRequest, db: Session = Depends(get_db)):
+    """Register a new user account"""
+    user, error = register_user(db, registration)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error
+        )
+    
+    return RegisterResponse(
+        success=True,
+        message="Registration successful! You can now log in.",
+        user=user_to_profile(user)
+    )
+
+
+@app.post("/api/auth/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Initiate password reset process"""
+    success, message, reset_token = initiate_password_reset(db, request.email)
+    
+    # In development, return the token (in production, send via email)
+    if reset_token:
+        message += f" [DEV MODE - Reset Token: {reset_token}]"
+    
+    return ForgotPasswordResponse(
+        success=success,
+        message=message
+    )
+
+
+@app.post("/api/auth/reset-password", response_model=ResetPasswordResponse)
+async def reset_password_endpoint(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password using token"""
+    success, message = reset_password(db, request.token, request.new_password)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+    
+    return ResetPasswordResponse(
+        success=success,
+        message=message
+    )
+
+
+@app.get("/api/auth/verify-token/{token}", response_model=VerifyTokenResponse)
+async def verify_reset_token(token: str, db: Session = Depends(get_db)):
+    """Verify if a reset token is valid"""
+    from user_models import User
+    from datetime import datetime
+    
+    user = db.query(User).filter(User.reset_token == token).first()
+    
+    if not user or user.reset_token_expiry < datetime.utcnow():
+        return VerifyTokenResponse(
+            valid=False,
+            message="Invalid or expired token"
+        )
+    
+    return VerifyTokenResponse(
+        valid=True,
+        message="Token is valid"
+    )
+
+
+@app.post("/api/auth/change-password")
+async def change_password_endpoint(
+    request: ChangePasswordRequest,
+    user_id: int,  # In production, get from JWT token
+    db: Session = Depends(get_db)
+):
+    """Change password for authenticated user"""
+    success, message = change_password(db, user_id, request.old_password, request.new_password)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=message
+        )
+    
+    return {"success": success, "message": message}
+
 # ==================== PROJECT ENDPOINTS ====================
 
 @app.post("/api/projects", response_model=ProjectSchema, status_code=status.HTTP_201_CREATED)
-def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
+async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     """Create a new project"""
     existing = db.query(Project).filter(Project.code == project.code).first()
     if existing:
@@ -62,6 +219,11 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
+    
+    # Send Slack notification
+    slack_service = get_slack_service()
+    await slack_service.notify_project_created(db_project)
+    
     return db_project
 
 @app.get("/api/projects", response_model=List[ProjectSchema])
@@ -159,6 +321,14 @@ async def import_excel(
 
         if not result.get("success"):
             raise HTTPException(status_code=400, detail=result.get("message", "Import failed"))
+
+        # Send Slack notification
+        slack_service = get_slack_service()
+        await slack_service.notify_excel_imported(
+            project,
+            result.get("controls_created", 0),
+            result.get("tasks_created", 0)
+        )
 
         return result
     except HTTPException:
@@ -293,7 +463,7 @@ def update_task(task_id: int, task_update: TaskInstanceUpdate, db: Session = Dep
     return db_task
 
 @app.post("/api/tasks/{task_id}/complete", response_model=TaskInstanceSchema)
-def complete_task(task_id: int, db: Session = Depends(get_db)):
+async def complete_task(task_id: int, db: Session = Depends(get_db)):
     """Mark a task as complete"""
     db_task = db.query(TaskInstance).filter(TaskInstance.id == task_id).first()
     if not db_task:
@@ -304,6 +474,11 @@ def complete_task(task_id: int, db: Session = Depends(get_db)):
     db_task.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(db_task)
+    
+    # Send Slack notification
+    slack_service = get_slack_service()
+    await slack_service.notify_task_completed(db_task, db)
+    
     return db_task
 
 # ==================== DASHBOARD ENDPOINTS ====================

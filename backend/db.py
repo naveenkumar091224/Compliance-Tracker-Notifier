@@ -1,8 +1,11 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker, Session, declarative_base
 from models import Base
 import os
 from pathlib import Path
+
+# Import user models to register with Base
+from user_models import User
 
 # Ensure data directory exists
 data_dir = Path("/app/data")

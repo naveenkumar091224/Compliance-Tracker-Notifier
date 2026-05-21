@@ -67,10 +67,249 @@
   border-radius: 10px;
   font-size: 0.95rem;
 }
+.auth-success {
+  margin: 0.5rem 0 1rem;
+  padding: 0.85rem 1rem;
+  background: #f0fdf4;
+  color: #15803d;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
 
 .auth-submit {
   width: 100%;
 }
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 3rem;
+  flex: 1;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.password-toggle:hover {
+  opacity: 1;
+}
+
+.auth-links {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.auth-link {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: none;
+  padding: 0;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-divider {
+  margin: 1.5rem 0;
+  text-align: center;
+  position: relative;
+}
+
+.auth-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.auth-divider span {
+  position: relative;
+  background: white;
+  padding: 0 1rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.auth-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn-oauth {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.btn-oauth:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-oauth:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.oauth-icon {
+  font-size: 1.2rem;
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.auth-footer p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.auth-link-primary {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.auth-link-primary:hover {
+  text-decoration: underline;
+}
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.password-strength-bar {
+  flex: 1;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.password-strength-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.password-strength-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 60px;
+}
+
+/* Password Requirements */
+.password-requirements {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.password-requirements small {
+  display: block;
+  color: #64748b;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.password-requirements ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.password-requirements li {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.password-requirements li::before {
+  content: '○';
+  position: absolute;
+  left: 0;
+  color: #cbd5e1;
+}
+
+.password-requirements li.met {
+  color: #10b981;
+}
+
+.password-requirements li.met::before {
+  content: '✓';
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* Auth Subtitle */
+.auth-subtitle {
+  text-align: center;
+  color: #64748b;
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* Error Text */
+.error-text {
+  color: #ef4444;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
 
 .demo-credentials {
   margin-top: 1.25rem;
@@ -560,8 +799,8 @@
 
 .chatbot-panel {
   position: static;
-  width: min(420px, calc(100vw - 48px));
-  max-height: min(75vh, 720px);
+  width: min(320px, calc(100vw - 48px));
+  max-height: min(400px, 50vh);
   z-index: 2000;
   background: #ffffff;
   border: 1px solid #cbd5e1;
@@ -636,15 +875,15 @@
 }
 
 .chatbot-shell.maximized .chatbot-panel {
-  width: min(90vw, 1200px);
-  max-height: 90vh;
+  width: min(800px, 85vw);
+  max-height: 85vh;
   position: fixed;
   right: 24px;
   bottom: 24px;
 }
 
 .chatbot-shell.maximized .chatbot-messages {
-  max-height: calc(90vh - 280px);
+  max-height: calc(85vh - 280px);
 }
 
 .chatbot-prompts {

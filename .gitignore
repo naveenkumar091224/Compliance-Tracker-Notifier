@@ -16,7 +16,10 @@ backend/uploads/
 # Node / frontend
 node_modules/
 dist/
+dist-electron/
 coverage/
+*.lock
+package-lock.json
 
 # Logs
 *.log

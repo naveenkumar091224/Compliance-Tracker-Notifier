@@ -16,27 +16,64 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
   const [upcomingTasks, setUpcomingTasks] = useState<TaskInstance[]>([]);
   const [recentProjects, setRecentProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsEnabled] = useState(true); // Enabled by default, no toggle needed
   const [toastTaskIds, setToastTaskIds] = useState<number[]>([]);
+  const [notifiedTaskIds, setNotifiedTaskIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
   useEffect(() => {
+    // Only show notifications if explicitly enabled by user
     if (!notificationsEnabled || upcomingTasks.length === 0) {
       return;
+    }
+
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
     }
 
     const dueSoonTasks = upcomingTasks
       .filter((task: TaskInstance) => {
         if (task.status !== 'pending') return false;
+        // Skip if already notified in this session
+        if (notifiedTaskIds.has(task.id)) return false;
         const dueTime = new Date(task.planned_date).getTime();
         const now = new Date().getTime();
         const hoursUntilDue = (dueTime - now) / (1000 * 60 * 60);
         return hoursUntilDue <= 168;
       })
       .slice(0, 3);
+
+    // Only proceed if there are new tasks to notify about
+    if (dueSoonTasks.length === 0) {
+      return;
+    }
+
+    // Show system notifications
+    if ('Notification' in window && Notification.permission === 'granted') {
+      dueSoonTasks.forEach((task: TaskInstance) => {
+        const taskTitle = task.raw_task_name || task.control_title || task.instance_label;
+        const dueDate = new Date(task.planned_date).toLocaleDateString();
+        const projectInfo = task.project_code ? `${task.project_code} · ` : '';
+        
+        new Notification('📋 Task Reminder', {
+          body: `${taskTitle}\n${projectInfo}Due ${dueDate}`,
+          icon: '/icon.png',
+          tag: `task-${task.id}`,
+          requireInteraction: false
+        });
+      });
+    }
+
+    // Mark these tasks as notified
+    setNotifiedTaskIds(prev => {
+      const newSet = new Set(prev);
+      dueSoonTasks.forEach(task => newSet.add(task.id));
+      return newSet;
+    });
 
     setToastTaskIds(dueSoonTasks.map((task: TaskInstance) => task.id));
 
@@ -45,20 +82,27 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
     }, 7000);
 
     return () => window.clearTimeout(timeout);
-  }, [notificationsEnabled, upcomingTasks]);
+  }, [notificationsEnabled, upcomingTasks, notifiedTaskIds]);
 
   const loadDashboard = async () => {
     try {
+      console.log('Loading dashboard data...');
       const [statsData, tasksData, projectsData] = await Promise.all([
         getDashboardStats(),
         getAllTasks('pending'),
         getProjects()
       ]);
+      console.log('Dashboard data loaded:', { statsData, tasksData, projectsData });
       setStats(statsData);
       setUpcomingTasks(tasksData.slice(0, 8));
       setRecentProjects(projectsData.slice(0, 4));
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      // Show error details
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
     } finally {
       setLoading(false);
     }
@@ -180,13 +224,6 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
             <span className="section-subtitle">Next pending activities</span>
           </div>
           <div className="notification-demo-bar">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setNotificationsEnabled((current: boolean) => !current)}
-            >
-              {notificationsEnabled ? 'Disable Popup Demo' : 'Enable Popup Demo'}
-            </button>
             <button
               type="button"
               className="btn-primary"
