@@ -379,7 +379,7 @@ class SlackNotificationService:
                     },
                     {
                         "type": "mrkdwn",
-                        "text": f"*Project Code:*\n{project.project_code}"
+                        "text": f"*Project Code:*\n{project.code}"
                     },
                     {
                         "type": "mrkdwn",

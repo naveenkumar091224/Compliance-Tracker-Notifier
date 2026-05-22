@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from db import Base
 
 
@@ -18,6 +19,9 @@ class User(Base):
     reset_token_expiry = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    projects = relationship("Project", back_populates="owner")
 
     def __repr__(self):
         return f"<User(username='{self.username}', email='{self.email}')>"

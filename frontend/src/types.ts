@@ -100,4 +100,39 @@ export interface ExcelImportResponse {
   errors?: string[];
 }
 
+export interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  full_name: string;
+  role: string;
+  created_at?: string;
+}
+
+export interface LoginRequest {
+  username_or_email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  user?: UserProfile;
+  token?: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  full_name: string;
+  role?: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  user?: UserProfile;
+}
+
 // Made with Bob

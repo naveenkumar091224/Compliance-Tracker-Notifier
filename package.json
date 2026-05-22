@@ -1,78 +1,12 @@
 {
-  "name": "compliance-tracker-desktop",
+  "name": "compliance-tracker",
   "version": "1.0.0",
-  "description": "Desktop application for Compliance Tracker - Multi-Project Task Management System",
-  "main": "electron/main.js",
+  "description": "Compliance Tracker - Multi-Project Task Management System",
   "author": "Your Organization",
   "license": "MIT",
   "scripts": {
-    "start": "electron .",
-    "dev": "cross-env NODE_ENV=development electron .",
-    "build": "npm run build:frontend && npm run build:electron",
-    "build:frontend": "cd frontend && npm run build",
-    "build:electron": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
-    "postinstall": "cd frontend && npm install",
     "setup": "npm run setup:frontend && npm run setup:backend",
     "setup:frontend": "cd frontend && npm install",
     "setup:backend": "cd backend && python -m venv venv && (venv\\Scripts\\activate || source venv/bin/activate) && pip install -r requirements.txt"
-  },
-  "dependencies": {
-    "electron-squirrel-startup": "^1.0.0"
-  },
-  "devDependencies": {
-    "cross-env": "^7.0.3",
-    "electron": "^42.2.0",
-    "electron-builder": "^26.8.1"
-  },
-  "build": {
-    "appId": "com.yourorg.compliance-tracker",
-    "productName": "Compliance Tracker",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "electron/**/*",
-      "frontend/dist/**/*"
-    ],
-    "asarUnpack": [
-      "**/*.node",
-      "**/node_modules/electron/dist/resources/**"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "frontend/public/icon.ico"
-    },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "icon": "frontend/public/icon.icns",
-      "category": "public.app-category.business"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "frontend/public/icon.png",
-      "category": "Office"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
   }
 }

@@ -64,7 +64,7 @@ def register_user(db: Session, registration: RegisterRequest) -> tuple[Optional[
         email=registration.email,
         password_hash=hashed_password,
         full_name=registration.full_name,
-        role="User"  # Default role
+        role=registration.role  # Use role from registration request
     )
     
     db.add(new_user)

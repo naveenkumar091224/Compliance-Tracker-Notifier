@@ -1,226 +1,134 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { register } from '../api';
+import { RegisterRequest } from '../types';
 
 interface RegisterPageProps {
+  onSuccess: () => void;
   onBackToLogin: () => void;
-  onRegisterSuccess: () => void;
 }
 
-interface PasswordStrength {
-  score: number;
-  message: string;
-  color: string;
-}
-
-const RegisterPage: React.FC<RegisterPageProps> = ({ onBackToLogin, onRegisterSuccess }) => {
-  const [formData, setFormData] = useState({
+function RegisterPage({ onSuccess, onBackToLogin }: RegisterPageProps) {
+  const [formData, setFormData] = useState<RegisterRequest>({
     username: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    fullName: ''
+    full_name: '',
+    role: 'User'
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const calculatePasswordStrength = (password: string): PasswordStrength => {
-    if (password.length === 0) {
-      return { score: 0, message: '', color: '#ccc' };
-    }
-    
-    let score = 0;
-    
-    // Length check
-    if (password.length >= 8) score += 25;
-    if (password.length >= 12) score += 25;
-    
-    // Character variety checks
-    if (/[a-z]/.test(password)) score += 15;
-    if (/[A-Z]/.test(password)) score += 15;
-    if (/[0-9]/.test(password)) score += 10;
-    if (/[^a-zA-Z0-9]/.test(password)) score += 10;
-    
-    let message = '';
-    let color = '';
-    
-    if (score < 40) {
-      message = 'Weak';
-      color = '#ff4444';
-    } else if (score < 60) {
-      message = 'Fair';
-      color = '#ff9800';
-    } else if (score < 80) {
-      message = 'Good';
-      color = '#2196f3';
-    } else {
-      message = 'Strong';
-      color = '#4caf50';
-    }
-    
-    return { score, message, color };
-  };
-
-  const passwordStrength = calculatePasswordStrength(formData.password);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    setError('');
-  };
-
-  const validateForm = (): boolean => {
-    if (!formData.username.trim()) {
-      setError('Username is required');
-      return false;
-    }
-    
-    if (formData.username.length < 3) {
-      setError('Username must be at least 3 characters');
-      return false;
-    }
-    
-    if (!formData.email.trim()) {
-      setError('Email is required');
-      return false;
-    }
-    
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    
-    if (!formData.fullName.trim()) {
-      setError('Full name is required');
-      return false;
-    }
-    
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return false;
-    }
-    
-    if (!/[A-Z]/.test(formData.password)) {
-      setError('Password must contain at least one uppercase letter');
-      return false;
-    }
-    
-    if (!/[a-z]/.test(formData.password)) {
-      setError('Password must contain at least one lowercase letter');
-      return false;
-    }
-    
-    if (!/[0-9]/.test(formData.password)) {
-      setError('Password must contain at least one number');
-      return false;
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    
-    return true;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
+    setError('');
+
+    // Validation
+    if (formData.password !== confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
-    
-    setIsLoading(true);
-    setError('');
-    
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      await register({
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-        full_name: formData.fullName
-      });
-      
-      // Show success message and redirect to login
-      alert('Account created successfully! Please log in.');
-      onRegisterSuccess();
+      const response = await register(formData);
+      if (response.success) {
+        alert('Registration successful! Please log in with your credentials.');
+        onSuccess();
+      } else {
+        setError(response.message || 'Registration failed');
+      }
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="auth-container">
+    <div className="auth-shell">
       <div className="auth-card">
-        <h2>Create Account</h2>
-        <p className="auth-subtitle">Join Compliance Tracker</p>
-        
-        <form onSubmit={handleSubmit}>
-          {error && <div className="error-message">{error}</div>}
-          
+        <div className="auth-brand">
+          <span className="auth-icon">📊</span>
+          <div>
+            <h1>Create Account</h1>
+            <p>Register for DS&P Activity Tracker</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label htmlFor="full_name">Full Name</label>
+            <input
+              id="full_name"
+              type="text"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              required
+              minLength={2}
+              placeholder="Enter your full name"
+            />
+          </div>
+
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
-              type="text"
               id="username"
-              name="username"
+              type="text"
               value={formData.username}
-              onChange={handleChange}
-              placeholder="Choose a username"
-              autoComplete="username"
-              disabled={isLoading}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               required
+              minLength={3}
+              placeholder="Choose a username"
             />
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
-              type="email"
               id="email"
-              name="email"
+              type="email"
               value={formData.email}
-              onChange={handleChange}
-              placeholder="your.email@company.com"
-              autoComplete="email"
-              disabled={isLoading}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               required
+              placeholder="Enter your email"
             />
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="fullName">Full Name</label>
-            <input
-              type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="John Doe"
-              autoComplete="name"
-              disabled={isLoading}
+            <label htmlFor="role">Role</label>
+            <select
+              id="role"
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               required
-            />
+            >
+              <option value="User">User</option>
+              <option value="Compliance Analyst">Compliance Analyst</option>
+              <option value="Compliance Manager">Compliance Manager</option>
+              <option value="System Administrator">System Administrator</option>
+            </select>
           </div>
-          
+
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <div className="password-input-wrapper">
               <input
-                type={showPassword ? 'text' : 'password'}
                 id="password"
-                name="password"
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
-                onChange={handleChange}
-                placeholder="Create a strong password"
-                autoComplete="new-password"
-                disabled={isLoading}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
+                minLength={8}
+                placeholder="Create a password (min 8 characters)"
               />
               <button
                 type="button"
@@ -231,59 +139,18 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBackToLogin, onRegisterSu
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
-            
-            {formData.password && (
-              <div className="password-strength">
-                <div className="password-strength-bar">
-                  <div 
-                    className="password-strength-fill"
-                    style={{ 
-                      width: `${passwordStrength.score}%`,
-                      backgroundColor: passwordStrength.color
-                    }}
-                  />
-                </div>
-                <span 
-                  className="password-strength-text"
-                  style={{ color: passwordStrength.color }}
-                >
-                  {passwordStrength.message}
-                </span>
-              </div>
-            )}
-            
-            <div className="password-requirements">
-              <small>Password must contain:</small>
-              <ul>
-                <li className={formData.password.length >= 8 ? 'met' : ''}>
-                  At least 8 characters
-                </li>
-                <li className={/[A-Z]/.test(formData.password) ? 'met' : ''}>
-                  One uppercase letter
-                </li>
-                <li className={/[a-z]/.test(formData.password) ? 'met' : ''}>
-                  One lowercase letter
-                </li>
-                <li className={/[0-9]/.test(formData.password) ? 'met' : ''}>
-                  One number
-                </li>
-              </ul>
-            </div>
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
+            <label htmlFor="confirm_password">Confirm Password</label>
             <div className="password-input-wrapper">
               <input
+                id="confirm_password"
                 type={showConfirmPassword ? 'text' : 'password'}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Re-enter your password"
-                autoComplete="new-password"
-                disabled={isLoading}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                placeholder="Confirm your password"
               />
               <button
                 type="button"
@@ -294,37 +161,27 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBackToLogin, onRegisterSu
                 {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
-            {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-              <small className="error-text">Passwords do not match</small>
-            )}
           </div>
-          
-          <button 
-            type="submit" 
-            className="btn-primary"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Creating Account...' : 'Create Account'}
+
+          {error && <div className="auth-error">{error}</div>}
+
+          <button type="submit" className="btn-primary auth-submit" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
-        
+
         <div className="auth-footer">
           <p>
             Already have an account?{' '}
-            <button 
-              type="button"
-              className="auth-link-primary"
-              onClick={onBackToLogin}
-              disabled={isLoading}
-            >
-              Log In
+            <button onClick={onBackToLogin} className="link-button">
+              Log in here
             </button>
           </p>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default RegisterPage;
 

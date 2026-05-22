@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import shutil
 import secrets
 from pathlib import Path
@@ -43,7 +43,7 @@ from auth_service import (
     user_to_profile,
     create_demo_users
 )
-from auth_utils import create_access_token
+from auth_utils import create_access_token, verify_token
 from excel_service import ExcelImportService
 from datetime import datetime, timedelta
 from slack_service import get_slack_service
@@ -94,6 +94,56 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy", "message": "Backend is running"}
+
+# ==================== AUTHENTICATION DEPENDENCY ====================
+
+def get_current_user_id(authorization: Optional[str] = Header(None)) -> int:
+    """Extract and validate user ID from JWT token in Authorization header"""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing"
+        )
+    
+    # Extract token from "Bearer <token>" format
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication scheme"
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format"
+        )
+    
+    # Verify and decode token
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+    
+    # Extract user_id from token
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )
+    
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token"
+        )
+    
+    return user_id
 
 # ==================== AUTHENTICATION ENDPOINTS ====================
 
@@ -209,13 +259,24 @@ async def change_password_endpoint(
 # ==================== PROJECT ENDPOINTS ====================
 
 @app.post("/api/projects", response_model=ProjectSchema, status_code=status.HTTP_201_CREATED)
-async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
-    """Create a new project"""
-    existing = db.query(Project).filter(Project.code == project.code).first()
+async def create_project(
+    project: ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Create a new project (user-specific)"""
+    # Check if project code already exists for this user
+    existing = db.query(Project).filter(
+        Project.code == project.code,
+        Project.user_id == current_user_id
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Project code already exists")
 
-    db_project = Project(**project.dict())
+    # Create project with user_id
+    project_data = project.dict()
+    project_data['user_id'] = current_user_id
+    db_project = Project(**project_data)
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
@@ -227,23 +288,45 @@ async def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     return db_project
 
 @app.get("/api/projects", response_model=List[ProjectSchema])
-def get_projects(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """Get all projects"""
-    projects = db.query(Project).offset(skip).limit(limit).all()
+def get_projects(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Get all projects for the current user"""
+    projects = db.query(Project).filter(
+        Project.user_id == current_user_id
+    ).offset(skip).limit(limit).all()
     return projects
 
 @app.get("/api/projects/{project_id}", response_model=ProjectSchema)
-def get_project(project_id: int, db: Session = Depends(get_db)):
-    """Get a specific project"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+def get_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Get a specific project (must belong to current user)"""
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
 
 @app.put("/api/projects/{project_id}", response_model=ProjectSchema)
-def update_project(project_id: int, project_update: ProjectUpdate, db: Session = Depends(get_db)):
-    """Update a project"""
-    db_project = db.query(Project).filter(Project.id == project_id).first()
+def update_project(
+    project_id: int,
+    project_update: ProjectUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Update a project (must belong to current user)"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user_id
+    ).first()
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -257,9 +340,16 @@ def update_project(project_id: int, project_update: ProjectUpdate, db: Session =
     return db_project
 
 @app.delete("/api/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_project(project_id: int, db: Session = Depends(get_db)):
-    """Delete a project"""
-    db_project = db.query(Project).filter(Project.id == project_id).first()
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Delete a project (must belong to current user)"""
+    db_project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user_id
+    ).first()
     if not db_project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -302,10 +392,14 @@ async def import_excel(
     sheet_name: str = Form(...),
     file_token: str = Form(...),
     original_filename: str = Form(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
-    """Import Excel file for a project from a selected sheet"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    """Import Excel file for a project from a selected sheet (must belong to current user)"""
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user_id
+    ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -414,9 +508,18 @@ def get_project_tasks(
     status_filter: str | None = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
-    """Get all tasks for a project"""
+    """Get all tasks for a project (must belong to current user)"""
+    # Verify project belongs to user
+    project = db.query(Project).filter(
+        Project.id == project_id,
+        Project.user_id == current_user_id
+    ).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
     query = db.query(TaskInstance).filter(TaskInstance.project_id == project_id)
 
     if status_filter:
@@ -430,10 +533,19 @@ def get_all_tasks(
     status_filter: str | None = None,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
-    """Get all tasks across all projects"""
-    query = db.query(TaskInstance)
+    """Get all tasks across all user's projects"""
+    # Get user's project IDs
+    user_project_ids = db.query(Project.id).filter(
+        Project.user_id == current_user_id
+    ).all()
+    user_project_ids = [pid[0] for pid in user_project_ids]
+    
+    query = db.query(TaskInstance).filter(
+        TaskInstance.project_id.in_(user_project_ids)
+    )
 
     if status_filter:
         query = query.filter(TaskInstance.status == status_filter)
@@ -442,9 +554,17 @@ def get_all_tasks(
     return [_serialize_task_detail(task) for task in tasks]
 
 @app.put("/api/tasks/{task_id}", response_model=TaskInstanceSchema)
-def update_task(task_id: int, task_update: TaskInstanceUpdate, db: Session = Depends(get_db)):
-    """Update a task instance"""
-    db_task = db.query(TaskInstance).filter(TaskInstance.id == task_id).first()
+def update_task(
+    task_id: int,
+    task_update: TaskInstanceUpdate,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Update a task instance (must belong to user's project)"""
+    db_task = db.query(TaskInstance).join(Project).filter(
+        TaskInstance.id == task_id,
+        Project.user_id == current_user_id
+    ).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -463,9 +583,16 @@ def update_task(task_id: int, task_update: TaskInstanceUpdate, db: Session = Dep
     return db_task
 
 @app.post("/api/tasks/{task_id}/complete", response_model=TaskInstanceSchema)
-async def complete_task(task_id: int, db: Session = Depends(get_db)):
-    """Mark a task as complete"""
-    db_task = db.query(TaskInstance).filter(TaskInstance.id == task_id).first()
+async def complete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Mark a task as complete (must belong to user's project)"""
+    db_task = db.query(TaskInstance).join(Project).filter(
+        TaskInstance.id == task_id,
+        Project.user_id == current_user_id
+    ).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -484,36 +611,64 @@ async def complete_task(task_id: int, db: Session = Depends(get_db)):
 # ==================== DASHBOARD ENDPOINTS ====================
 
 @app.get("/api/dashboard/stats", response_model=DashboardStats)
-def get_dashboard_stats(db: Session = Depends(get_db)):
-    """Get dashboard statistics"""
-    total_projects = db.query(Project).count()
-    active_projects = db.query(Project).filter(Project.status == "active").count()
+def get_dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """Get dashboard statistics for current user"""
+    # Get user's project IDs
+    user_project_ids = db.query(Project.id).filter(
+        Project.user_id == current_user_id
+    ).all()
+    user_project_ids = [pid[0] for pid in user_project_ids]
+    
+    # Count user's projects
+    total_projects = db.query(Project).filter(
+        Project.user_id == current_user_id
+    ).count()
+    active_projects = db.query(Project).filter(
+        Project.user_id == current_user_id,
+        Project.status == "active"
+    ).count()
 
+    # Control templates are global (not user-specific)
     total_controls = db.query(ControlTemplate).filter(ControlTemplate.is_active == True).count()
-    applicable_controls = db.query(ProjectControl).filter(ProjectControl.is_applicable == True).count()
+    
+    # Count applicable controls for user's projects
+    applicable_controls = db.query(ProjectControl).filter(
+        ProjectControl.project_id.in_(user_project_ids),
+        ProjectControl.is_applicable == True
+    ).count()
 
     today = datetime.utcnow().date()
     tomorrow = today + timedelta(days=1)
     week_end = today + timedelta(days=7)
 
+    # Count tasks for user's projects only
     tasks_due_today = db.query(TaskInstance).filter(
+        TaskInstance.project_id.in_(user_project_ids),
         TaskInstance.status == "pending",
         TaskInstance.planned_date >= datetime.combine(today, datetime.min.time()),
         TaskInstance.planned_date < datetime.combine(tomorrow, datetime.min.time())
     ).count()
 
     tasks_due_this_week = db.query(TaskInstance).filter(
+        TaskInstance.project_id.in_(user_project_ids),
         TaskInstance.status == "pending",
         TaskInstance.planned_date >= datetime.combine(today, datetime.min.time()),
         TaskInstance.planned_date < datetime.combine(week_end, datetime.min.time())
     ).count()
 
     overdue_tasks = db.query(TaskInstance).filter(
+        TaskInstance.project_id.in_(user_project_ids),
         TaskInstance.status == "pending",
         TaskInstance.planned_date < datetime.combine(today, datetime.min.time())
     ).count()
 
-    completed_tasks = db.query(TaskInstance).filter(TaskInstance.status == "completed").count()
+    completed_tasks = db.query(TaskInstance).filter(
+        TaskInstance.project_id.in_(user_project_ids),
+        TaskInstance.status == "completed"
+    ).count()
 
     return DashboardStats(
         total_projects=total_projects,

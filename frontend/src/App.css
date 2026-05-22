@@ -59,6 +59,27 @@
   margin-top: 1.5rem;
 }
 
+.auth-form select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 1rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-form select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.auth-form select:hover {
+  border-color: #cbd5e1;
+}
+
 .auth-error {
   margin: 0.5rem 0 1rem;
   padding: 0.85rem 1rem;
@@ -701,6 +722,77 @@
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
+/* Notification Schedule Info */
+.notification-schedule-info {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.schedule-info-header {
+  margin-bottom: 0.75rem;
+  color: #0c4a6e;
+  font-size: 0.95rem;
+}
+
+.schedule-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.schedule-icon {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.schedule-label {
+  color: #475569;
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.schedule-time {
+  color: #0c4a6e;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.schedule-next {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.schedule-next-label {
+  font-size: 0.85rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.schedule-next-time {
+  font-size: 0.95rem;
+  color: #0c4a6e;
+  font-weight: 700;
+}
+
 
 .notification-stack {
   position: fixed;
@@ -984,6 +1076,114 @@
 .chatbot-footer-link:hover {
   text-decoration: underline;
 }
+/* IBM Curator AI iframe styles */
+.chatbot-iframe-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 300px;
+  background: #f8fafc;
+}
+
+.chatbot-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  flex: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.chatbot-iframe.loaded {
+  opacity: 1;
+}
+
+.chatbot-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #64748b;
+}
+
+.chatbot-loading-spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 1rem;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.chatbot-error {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: #475569;
+}
+
+.chatbot-error-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.chatbot-error h3 {
+  margin: 0 0 0.5rem;
+  color: #1e293b;
+  font-size: 1.1rem;
+}
+
+.chatbot-error p {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.chatbot-error ul {
+  text-align: left;
+  margin: 0 0 1.5rem;
+  padding-left: 1.5rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.chatbot-error ul li {
+  margin-bottom: 0.5rem;
+}
+
+.chatbot-error .btn-primary {
+  margin-bottom: 0.75rem;
+}
+
+.chatbot-external-link {
+  display: inline-block;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.chatbot-external-link:hover {
+  background: #2563eb;
+  color: white;
+}
+
+.chatbot-shell.minimized .chatbot-iframe-container {
+  display: none;
+}
+
 
 .task-status.pending {
   background: #fff3cd;
@@ -1226,6 +1426,43 @@
 
 .form-group textarea {
   resize: vertical;
+/* Password Input with Toggle */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: #64748b;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:hover {
+  color: #3498db;
+}
+
+.password-toggle:focus {
+  outline: 2px solid #3498db;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 }
 
 /* Buttons */
@@ -1575,3 +1812,133 @@ button:disabled {
 }
 
 /* Made with Bob */
+
+/* Authentication Footer Styles */
+.auth-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.auth-footer p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.link-button:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Demo Credentials Styles */
+.demo-credentials {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.demo-credentials strong {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #475569;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.demo-credentials span,
+.demo-account span {
+  display: block;
+  color: #64748b;
+  font-size: 0.9rem;
+  font-family: 'Courier New', monospace;
+  margin: 0.25rem 0;
+}
+
+.demo-account {
+  margin: 0.5rem 0;
+}
+
+/* User Role Badge */
+.user-role {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+/* Curator Chat Button */
+.curator-chat-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #1f4b99 0%, #2c5aa0 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(31, 75, 153, 0.3);
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.curator-chat-button:hover {
+  background: linear-gradient(135deg, #1a3d7a 0%, #234a85 100%);
+  box-shadow: 0 6px 20px rgba(31, 75, 153, 0.4);
+  transform: translateY(-2px);
+}
+
+.curator-chat-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(31, 75, 153, 0.3);
+}
+
+.curator-chat-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.curator-chat-label {
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+@media (max-width: 768px) {
+  .curator-chat-button {
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .curator-chat-icon {
+    font-size: 1.3rem;
+  }
+  
+  .curator-chat-label {
+    font-size: 0.85rem;
+  }
+}

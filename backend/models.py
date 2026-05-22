@@ -17,10 +17,12 @@ class Project(Base):
     status = Column(String(20), default="active")  # active, on-hold, completed, archived
     team_members = Column(JSON)  # ["DPE", "PM", "SE"]
     client = Column(String(255))
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Owner of the project
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
+    owner = relationship("User", back_populates="projects")
     project_controls = relationship("ProjectControl", back_populates="project", cascade="all, delete-orphan")
     task_instances = relationship("TaskInstance", back_populates="project", cascade="all, delete-orphan")
 

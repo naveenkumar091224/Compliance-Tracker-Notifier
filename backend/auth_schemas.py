@@ -15,6 +15,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., min_length=8, description="Password (min 8 characters)")
     full_name: str = Field(..., min_length=2, max_length=100, description="Full name")
+    role: str = Field(default="User", description="User role (Compliance Manager, Compliance Analyst, System Administrator, User)")
 
 
 class ForgotPasswordRequest(BaseModel):

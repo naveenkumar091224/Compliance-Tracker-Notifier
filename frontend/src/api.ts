@@ -5,7 +5,11 @@ import {
   TaskInstance,
   DashboardStats,
   ExcelWorkbookSheetsResponse,
-  ExcelImportResponse
+  ExcelImportResponse,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse
 } from './types';
 
 const API_BASE_URL = '/api';
@@ -15,6 +19,15 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Add token to requests if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 // Projects
@@ -120,6 +133,17 @@ export const updateTaskActualDate = async (id: number, actualDate?: string): Pro
 // Dashboard
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   const response = await api.get('/dashboard/stats');
+  return response.data;
+};
+
+// Authentication
+export const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
+  const response = await api.post('/auth/login', credentials);
+  return response.data;
+};
+
+export const register = async (userData: RegisterRequest): Promise<RegisterResponse> => {
+  const response = await api.post('/auth/register', userData);
   return response.data;
 };
 

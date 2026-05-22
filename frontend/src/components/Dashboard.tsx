@@ -1,8 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getDashboardStats, getAllTasks, getProjects } from '../api';
 import { DashboardStats, TaskInstance, Project } from '../types';
-import ChatbotWidget from './ChatbotWidget';
+import {
+  shouldRunNotification,
+  updateLastRun,
+  filterTasksByType,
+  getNotificationTitle,
+  getNotificationPriority,
+  getNextScheduledTime
+} from '../services/notificationScheduler';
 
 type DashboardProps = {
   onChatContextChange?: (context: {
@@ -18,71 +25,100 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
   const [loading, setLoading] = useState(true);
   const [notificationsEnabled] = useState(true); // Enabled by default, no toggle needed
   const [toastTaskIds, setToastTaskIds] = useState<number[]>([]);
-  const [notifiedTaskIds, setNotifiedTaskIds] = useState<Set<number>>(new Set());
+  const [notifiedTaskIds, setNotifiedTaskIds] = useState<Set<number>>(() => {
+    // Load previously notified tasks from sessionStorage
+    const stored = sessionStorage.getItem('notified-tasks');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
+  // Persist notified tasks to sessionStorage
   useEffect(() => {
-    // Only show notifications if explicitly enabled by user
+    if (notifiedTaskIds.size > 0) {
+      sessionStorage.setItem('notified-tasks', JSON.stringify(Array.from(notifiedTaskIds)));
+    }
+  }, [notifiedTaskIds]);
+
+  // Scheduled notification checker
+  const checkScheduledNotifications = useCallback(() => {
     if (!notificationsEnabled || upcomingTasks.length === 0) {
       return;
     }
 
-    // Request notification permission
+    // Request notification permission if needed
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
-    const dueSoonTasks = upcomingTasks
-      .filter((task: TaskInstance) => {
-        if (task.status !== 'pending') return false;
-        // Skip if already notified in this session
-        if (notifiedTaskIds.has(task.id)) return false;
-        const dueTime = new Date(task.planned_date).getTime();
-        const now = new Date().getTime();
-        const hoursUntilDue = (dueTime - now) / (1000 * 60 * 60);
-        return hoursUntilDue <= 168;
-      })
-      .slice(0, 3);
+    const notificationTypes: Array<'overdue' | 'due_today' | 'due_this_week'> = [
+      'overdue',
+      'due_today',
+      'due_this_week'
+    ];
 
-    // Only proceed if there are new tasks to notify about
-    if (dueSoonTasks.length === 0) {
-      return;
-    }
-
-    // Show system notifications
-    if ('Notification' in window && Notification.permission === 'granted') {
-      dueSoonTasks.forEach((task: TaskInstance) => {
-        const taskTitle = task.raw_task_name || task.control_title || task.instance_label;
-        const dueDate = new Date(task.planned_date).toLocaleDateString();
-        const projectInfo = task.project_code ? `${task.project_code} · ` : '';
+    // Check each notification type
+    notificationTypes.forEach(type => {
+      if (shouldRunNotification(type)) {
+        const tasksToNotify = filterTasksByType(upcomingTasks, type);
         
-        new Notification('📋 Task Reminder', {
-          body: `${taskTitle}\n${projectInfo}Due ${dueDate}`,
-          icon: '/icon.png',
-          tag: `task-${task.id}`,
-          requireInteraction: false
-        });
-      });
-    }
+        if (tasksToNotify.length > 0) {
+          const title = getNotificationTitle(type);
+          const priority = getNotificationPriority(type);
+          
+          // Show browser notifications
+          if ('Notification' in window && Notification.permission === 'granted') {
+            tasksToNotify.slice(0, 5).forEach((task: TaskInstance) => {
+              const taskTitle = task.raw_task_name || task.control_title || task.instance_label;
+              const dueDate = new Date(task.planned_date).toLocaleDateString();
+              const projectInfo = task.project_code ? `${task.project_code} · ` : '';
+              
+              new Notification(title, {
+                body: `${taskTitle}\n${projectInfo}Due ${dueDate}`,
+                icon: '/icon.png',
+                tag: `task-${type}-${task.id}`,
+                requireInteraction: type === 'overdue' // Overdue tasks require interaction
+              });
+            });
+          }
 
-    // Mark these tasks as notified
-    setNotifiedTaskIds(prev => {
-      const newSet = new Set(prev);
-      dueSoonTasks.forEach(task => newSet.add(task.id));
-      return newSet;
+          // Show toast notifications
+          const taskIds = tasksToNotify.slice(0, 3).map((task: TaskInstance) => task.id);
+          setToastTaskIds(taskIds);
+
+          // Mark these tasks as notified
+          setNotifiedTaskIds(prev => {
+            const newSet = new Set(prev);
+            tasksToNotify.forEach(task => newSet.add(task.id));
+            return newSet;
+          });
+
+          // Update last run time for this notification type
+          updateLastRun(type);
+
+          // Auto-dismiss toast after 10 seconds (longer for scheduled notifications)
+          setTimeout(() => {
+            setToastTaskIds([]);
+          }, 10000);
+        }
+      }
     });
-
-    setToastTaskIds(dueSoonTasks.map((task: TaskInstance) => task.id));
-
-    const timeout = window.setTimeout(() => {
-      setToastTaskIds([]);
-    }, 7000);
-
-    return () => window.clearTimeout(timeout);
   }, [notificationsEnabled, upcomingTasks, notifiedTaskIds]);
+
+  // Check for scheduled notifications every minute
+  useEffect(() => {
+    // Initial check
+    checkScheduledNotifications();
+
+    // Set up interval to check every minute
+    const interval = setInterval(() => {
+      checkScheduledNotifications();
+    }, 60000); // Check every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [checkScheduledNotifications]);
 
   const loadDashboard = async () => {
     try {
@@ -96,6 +132,13 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
       setStats(statsData);
       setUpcomingTasks(tasksData.slice(0, 8));
       setRecentProjects(projectsData.slice(0, 4));
+      
+      // Show immediate notifications only on first load (not on refresh)
+      const hasShownLoginNotifications = sessionStorage.getItem('login-notifications-shown');
+      if (!hasShownLoginNotifications) {
+        showLoginNotifications(tasksData);
+        sessionStorage.setItem('login-notifications-shown', 'true');
+      }
     } catch (error) {
       console.error('Error loading dashboard:', error);
       // Show error details
@@ -106,6 +149,80 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Show notifications immediately on login
+  const showLoginNotifications = async (tasks: TaskInstance[]) => {
+    if (!notificationsEnabled || tasks.length === 0) {
+      return;
+    }
+
+    // Get overdue, due today, and due this week tasks
+    const overdueTasks = filterTasksByType(tasks, 'overdue');
+    const dueTodayTasks = filterTasksByType(tasks, 'due_today');
+    const dueThisWeekTasks = filterTasksByType(tasks, 'due_this_week');
+
+    // Show all tasks for each category (no limit)
+    const allNotificationTasks = [
+      ...overdueTasks,
+      ...dueTodayTasks,
+      ...dueThisWeekTasks
+    ];
+
+    if (allNotificationTasks.length === 0) {
+      return;
+    }
+
+    // Request notification permission if needed and wait for response
+    if ('Notification' in window) {
+      let permission = Notification.permission;
+      
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+      }
+
+      // Show browser notifications if permission granted
+      if (permission === 'granted') {
+        allNotificationTasks.forEach((task: TaskInstance) => {
+          const taskTitle = task.raw_task_name || task.control_title || task.instance_label;
+          const dueDate = new Date(task.planned_date).toLocaleDateString();
+          const projectInfo = task.project_code ? `${task.project_code} · ` : '';
+          
+          // Determine notification type
+          let title = '📋 Task Reminder';
+          const today = new Date();
+          const taskDueDate = new Date(task.planned_date);
+          const dueDateOnly = new Date(taskDueDate.getFullYear(), taskDueDate.getMonth(), taskDueDate.getDate());
+          const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          
+          if (dueDateOnly < todayOnly) {
+            title = '🚨 Overdue Task';
+          } else if (dueDateOnly.getTime() === todayOnly.getTime()) {
+            title = '📋 Task Due Today';
+          } else {
+            title = '📅 Upcoming Task';
+          }
+          
+          new Notification(title, {
+            body: `${taskTitle}\n${projectInfo}Due ${dueDate}`,
+            icon: '/icon.png',
+            tag: `login-task-${task.id}`,
+            requireInteraction: dueDateOnly < todayOnly // Overdue tasks require interaction
+          });
+        });
+      } else if (permission === 'denied') {
+        console.warn('Desktop notifications are blocked. Please enable them in your browser settings.');
+      }
+    }
+
+    // Show toast notifications
+    const taskIds = allNotificationTasks.slice(0, 3).map((task: TaskInstance) => task.id);
+    setToastTaskIds(taskIds);
+
+    // Auto-dismiss toast after 10 seconds
+    setTimeout(() => {
+      setToastTaskIds([]);
+    }, 10000);
   };
 
   useEffect(() => {
@@ -240,6 +357,37 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
               Show Sample Popup
             </button>
           </div>
+          <div className="notification-schedule-info">
+            <div className="schedule-info-header">
+              <strong>📅 Scheduled Notifications</strong>
+            </div>
+            <div className="schedule-info-body">
+              <div className="schedule-item">
+                <span className="schedule-icon">🚨</span>
+                <span className="schedule-label">Overdue Tasks:</span>
+                <span className="schedule-time">Mon-Fri 8:30 AM</span>
+              </div>
+              <div className="schedule-item">
+                <span className="schedule-icon">📋</span>
+                <span className="schedule-label">Due Today:</span>
+                <span className="schedule-time">Mon-Fri 9:00 AM</span>
+              </div>
+              <div className="schedule-item">
+                <span className="schedule-icon">📅</span>
+                <span className="schedule-label">Due This Week:</span>
+                <span className="schedule-time">Mon-Fri 10:00 AM</span>
+              </div>
+              {(() => {
+                const next = getNextScheduledTime();
+                return next ? (
+                  <div className="schedule-next">
+                    <span className="schedule-next-label">Next notification:</span>
+                    <span className="schedule-next-time">{next.type} at {next.formatted}</span>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+          </div>
           {upcomingTasks.length === 0 ? (
             <div className="empty-state">
               <p>No upcoming tasks yet.</p>
@@ -322,7 +470,6 @@ function Dashboard({ onChatContextChange }: DashboardProps) {
           </div>
         </div>
       </div>
-      <ChatbotWidget upcomingTasks={upcomingTasks} projects={recentProjects} />
     </div>
   );
 }
